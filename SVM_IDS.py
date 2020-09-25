@@ -90,15 +90,15 @@ full_dataset = full_dataset.drop(['other','attack_type'],axis=1)
 print("Unique Labels",full_dataset.label.unique())
 
 #One Hot Encoding
-full_dataset = pd.get_dummies(full_dataset,drop_first=False)
+full_dataset_1 = pd.get_dummies(full_dataset,drop_first=False)
 #Train test split
-features = list(full_dataset.columns[:-5])
-y_train = np.array(full_dataset[:df_train.shape[0]][['label_normal','label_DOS','label_Probe','label_R2L','label_U2R']])
-X_train = full_dataset[:df_train.shape[0]][features]
+features = list(full_dataset_1.columns[:-5])
 
-y_test = np.array(full_dataset[:df_test.shape[0]][['label_normal','label_DOS','label_Probe','label_R2L','label_U2R']])
-X_test = full_dataset[:df_test.shape[0]][features]
+X_train = full_dataset_1[:df_train.shape[0]][features]
+y_train = np.array(full_dataset[:df_train.shape[0]]['label'])
 
+X_test = full_dataset_1[:df_test.shape[0]][features]
+y_test = np.array(full_dataset[:df_test.shape[0]]['label'])
 
 #Scaling data
 scaler = MinMaxScaler().fit(X_train)
@@ -107,7 +107,7 @@ X_test_scaled = np.array(scaler.transform(X_test))
 
 print("No of parameters before PCA are ",X_test_scaled.shape[1])
 
-pca_instance = PCA(.85) #Can be changed depending on our requirement to choose principal components
+pca_instance = PCA(.85)
 pca_instance.fit(X_train_scaled)
 
 print("\n--------------------PCA Done ------------------------\n")
@@ -117,22 +117,12 @@ print("No of parameters after PCA are ",pca_instance.n_components_)
 X_train_scaled = pca_instance.transform(X_train_scaled)
 X_test_scaled = pca_instance.transform(X_test_scaled)
 
-print()
-print()
-
-def NN_model():
-    model = Sequential()
-    model.add(Dense(256,activation='relu',input_shape=(X_train_scaled.shape[1],)))
-    model.add(Dropout(0.4))
-    model.add(Dense(256,activation='relu'))
-    model.add(Dropout(0.4))
-    model.add(Dense(y_train.shape[1],activation='softmax'))
-    model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy'])
-    model.summary()
-
-    return model
-
-Neural_Network_Model = NN_model()
-Neural_Network_Model.fit(X_train_scaled,y_train,epochs=5,verbose=1,batch_size=32)
-scores = Neural_Network_Model.evaluate(X_test_scaled,y_test)
-print("Accuracy : ",scores[1]*100)
+print("-----------------Training---------------")
+svm_classifier = SVC(kernel='rbf',random_state = 1)
+svm_classifier.fit(X_train_scaled,y_train)
+print("-----------------Testing----------------")
+y_predicted = svm_classifier.predict(X_test_scaled)
+matrix  = confusion_matrix(y_test,y_predicted)
+print("-----------------Results----------------")
+accuracy = float(matrix.diagonal().sum())/len(y_test)
+print("SVM Accuracy : ",accuracy*100)
